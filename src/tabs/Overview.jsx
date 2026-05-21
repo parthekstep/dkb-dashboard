@@ -1,0 +1,178 @@
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts';
+import { Card, SkeletonCard } from '../components/Card.jsx';
+import { fmtNum, fmtPct } from '../lib/metrics.js';
+
+const PIE_COLORS = ['#22C55E', '#EF4444', '#F59E0B', '#1F3864', '#3B82F6', '#8B5CF6'];
+
+export function Overview({ metrics, loading }) {
+  const jobStatusData = Object.entries(metrics.jobStatusBreakdown).map(
+    ([name, value]) => ({ name, value })
+  );
+
+  return (
+    <>
+      <Section title="Outcome Metrics — Openings" loading={loading} count={5}>
+        <Card
+          title="Total Openings (Before Campaign)"
+          value={fmtNum(metrics.totalOpeningsBeforeCampaign)}
+          subtext="Vacancies across all contacted companies"
+        />
+        <Card
+          title="Active Openings"
+          value={fmtNum(metrics.totalOpeningsActive)}
+          subtext={`${fmtPct(metrics.activeOpeningRate)} of total openings`}
+          borderColor="#22C55E"
+        />
+        <Card
+          title="Closed Openings"
+          value={fmtNum(metrics.totalOpeningsClosed)}
+          subtext={`${fmtPct(metrics.closedOpeningRate)} — positions filled`}
+          borderColor="#EF4444"
+        />
+        <Card
+          title="Unresolved Openings"
+          value={fmtNum(metrics.totalOpeningsUnresolved)}
+          subtext={`${fmtPct(metrics.unresolvedOpeningRate)} — not confirmed`}
+          borderColor="#F59E0B"
+        />
+        <Card
+          title="New Openings Captured"
+          value={fmtNum(metrics.totalNewOpenings)}
+          subtext="From new jobs posted this campaign"
+          borderColor="#3B82F6"
+        />
+      </Section>
+
+      <Section title="Outcome Metrics — Companies" loading={loading} count={5}>
+        <Card
+          title="Companies Called"
+          value={fmtNum(metrics.uniqueCompaniesCount)}
+          subtext="Unique phone numbers"
+        />
+        <Card
+          title="Jobs Confirmed Active"
+          value={fmtNum(metrics.companiesActive)}
+          subtext={`${fmtPct(metrics.activeCompanyRate)} of companies called`}
+          borderColor="#22C55E"
+        />
+        <Card
+          title="Jobs Confirmed Closed"
+          value={fmtNum(metrics.companiesClosed)}
+          subtext={`${fmtPct(metrics.closedCompanyRate)} — no longer hiring`}
+          borderColor="#EF4444"
+        />
+        <Card
+          title="Unresolved"
+          value={fmtNum(metrics.companiesUnresolved)}
+          subtext={`${fmtPct(metrics.unresolvedCompanyRate)} — no confirmation`}
+          borderColor="#F59E0B"
+        />
+        <Card
+          title="New Jobs Discussed"
+          value={fmtNum(metrics.companiesWithNewJobs)}
+          subtext="Companies that mentioned a new role"
+          borderColor="#3B82F6"
+        />
+      </Section>
+
+      <Section title="Call Metrics" loading={loading} count={5}>
+        <Card title="Total Calls" value={fmtNum(metrics.totalCalls)} />
+        <Card
+          title="Answered Calls"
+          value={fmtNum(metrics.answeredCalls)}
+          subtext={`${fmtPct(metrics.pickupRate)} pickup rate`}
+          borderColor="#22C55E"
+        />
+        <Card
+          title="Unanswered"
+          value={fmtNum(metrics.unansweredCalls)}
+          borderColor="#EF4444"
+        />
+        <Card
+          title="Productive Conversations"
+          value={fmtPct(metrics.productiveRate)}
+          subtext={`${fmtNum(metrics.productiveCalls)} calls — answered + over 30 seconds`}
+          borderColor="#F59E0B"
+        />
+        <Card
+          title="Avg Call Duration"
+          value={`${metrics.avgDurationAnswered.toFixed(1)} sec`}
+          subtext="Answered calls only"
+        />
+      </Section>
+
+      <section className="mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-[#F8F9FA] rounded-lg p-4">
+            <h3 className="text-base font-semibold text-[#1F3864] mb-3">Calls by Day</h3>
+            {loading ? (
+              <div className="h-72 bg-gray-100 rounded animate-pulse" />
+            ) : metrics.callsByDay.length === 0 ? (
+              <div className="h-72 flex items-center justify-center text-sm text-gray-500">No data</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={metrics.callsByDay}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#1F3864" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-[#F8F9FA] rounded-lg p-4">
+            <h3 className="text-base font-semibold text-[#1F3864] mb-3">Job Status Breakdown</h3>
+            {loading ? (
+              <div className="h-72 bg-gray-100 rounded animate-pulse" />
+            ) : jobStatusData.length === 0 ? (
+              <div className="h-72 flex items-center justify-center text-sm text-gray-500">No data</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={jobStatusData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    label={(d) => `${d.name}: ${d.value}`}
+                  >
+                    {jobStatusData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function Section({ title, loading, count, children }) {
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold text-[#1F3864] mb-3">{title}</h2>
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Array.from({ length: count }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
