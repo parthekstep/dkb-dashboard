@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 
 let cachedSheets = null;
 
-function getSheetsClient() {
+export function getSheetsClient() {
   if (cachedSheets) return cachedSheets;
 
   const b64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64;

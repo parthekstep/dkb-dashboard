@@ -34,16 +34,17 @@ const extractionSchema = {
     call_datetime_ist: { type: 'string' },
     final_summary: { type: 'string' },
     drop_reason: {
-      type: 'string',
+      type: ['string', 'null'],
       enum: [
-        'Not Answered',
+        'Audio or Comprehension Issues',
         'Hung Up Immediately',
+        'Hung Up Mid-Conversation',
+        'Silent / No Response',
+        'Busy / Call Back Requested',
+        'Bot Stuck / Phase Loop',
+        'Owner Refused / Declined',
         'Wrong Person / Owner Unavailable',
-        'Busy / Call Back Later',
-        'Not Interested / Refused',
-        'Language or Comprehension Issues',
-        'Network / Audio Issues',
-        'Completed',
+        null,
       ],
     },
   },
@@ -135,15 +136,23 @@ FIELD EXTRACTION RULES:
 
 19. final_summary — plain English, max 3 sentences. If not answered: "Call was not answered. No data collected." If answered: mention what was confirmed about the existing job, what fields were filled in, and whether any new job was discussed. Do not use technical field names or phase numbers. Write as if briefing a human ops team member.
 
-20. drop_reason — single best-fit bucket for WHY the call did not complete usefully. Choose ONE:
-- "Not Answered" — line never picked up (use whenever call_status is "Not answered").
-- "Hung Up Immediately" — picked up but ended within ~15 seconds with no useful exchange (silence, "hello hello" then drop).
-- "Wrong Person / Owner Unavailable" — someone other than the owner/decision-maker picked up, or owner was said to be unavailable. Triggers: "owner nahi hai", "galat number", "main employee hu", "boss nahi hai".
-- "Busy / Call Back Later" — owner explicitly asked to be called back. Triggers: "abhi busy hu", "baad me call karna", "meeting me hu".
-- "Not Interested / Refused" — owner picked up but explicitly declined to engage, hostile, or dismissive without giving information.
-- "Language or Comprehension Issues" — owner clearly could not understand the bot, repeated mismatches, owner switched languages the bot could not handle, or gave up due to confusion.
-- "Network / Audio Issues" — call had frequent "*No audio*" / "*User is speaking softly*" markers or dropped mid-conversation due to connectivity.
-- "Completed" — call ran to completion successfully. Use this whenever call_status is "Answered and completed" or there is no meaningful drop.
+20. drop_reason — categorise WHY the call dropped off mid-journey. The journey has three phases: (1) confirm existing job is still open, (2) confirm completeness of job details, (3) capture any new job.
+
+EMIT NULL (do not categorise) WHEN:
+- call_status is "Not answered" — no journey started.
+- OR the owner gave a clear yes/no on the existing job status AND gave a clear yes/no on whether they have a new job. The journey is complete; it is not a drop.
+
+OTHERWISE choose ONE of these 8 buckets. The journey started but did not finish:
+- "Audio or Comprehension Issues" — bot consistently could not understand the owner. Triggers: frequent "*No audio*" / "*User is speaking softly*" markers, repeated "क्या?", bot asks the same question multiple times because it didn't catch the answer, owner audible but bot keeps mis-parsing. Includes language mismatch and network/audio failures — they look identical in transcript.
+- "Hung Up Immediately" — owner picked up, said little or nothing (just "hello" or silence), and call ended within ~15 seconds. Owner heard the AI pitch and dropped.
+- "Hung Up Mid-Conversation" — owner engaged for more than 15 seconds and gave at least one real response, then disconnected before the journey reached resolution.
+- "Silent / No Response" — owner picked up and stayed on the line for >15 seconds but produced essentially no audible speech; bot filled the call with prompts and eventually ended it. Distinct from "Hung Up Immediately" because the call did not end fast.
+- "Busy / Call Back Requested" — owner explicitly deferred. Triggers: "abhi busy hu", "baad me call karna", "kal", "meeting me hu".
+- "Bot Stuck / Phase Loop" — bot asked the same question repeatedly within one phase; owner gave responses but conversation failed to advance. Call ended without owner refusing or hanging up — the bot itself got stuck.
+- "Owner Refused / Declined" — owner picked up, engaged briefly, and explicitly said no — "interest nahi hai", "nahi karna", refused to confirm or share info.
+- "Wrong Person / Owner Unavailable" — someone other than the owner picked up, or owner was said to be unavailable. Triggers: "owner nahi hai", "galat number", "main employee hu", "boss nahi hai".
+
+Pick the SINGLE dominant reason if multiple seem to apply.
 
 OUTPUT: Valid JSON only. No explanations. All fields required. Use null for string/number fields not discussed. Do not return empty strings.`;
 }

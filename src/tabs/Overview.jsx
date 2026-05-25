@@ -157,25 +157,31 @@ export function Overview({ metrics, loading }) {
         </div>
       </section>
 
-      <DropReasonsTable breakdown={metrics.dropReasonBreakdown} loading={loading} />
+      <DropReasonsTable
+        breakdown={metrics.dropReasonBreakdown}
+        dropPopulationCount={metrics.dropPopulationCount}
+        totalCalls={metrics.totalCalls}
+        loading={loading}
+      />
     </>
   );
 }
 
 const DROP_REASON_ORDER = [
-  'Not Answered',
+  'Audio or Comprehension Issues',
   'Hung Up Immediately',
+  'Hung Up Mid-Conversation',
+  'Silent / No Response',
+  'Busy / Call Back Requested',
+  'Bot Stuck / Phase Loop',
+  'Owner Refused / Declined',
   'Wrong Person / Owner Unavailable',
-  'Busy / Call Back Later',
-  'Not Interested / Refused',
-  'Language or Comprehension Issues',
-  'Network / Audio Issues',
-  'Completed',
 ];
 
-function DropReasonsTable({ breakdown, loading }) {
+function DropReasonsTable({ breakdown, dropPopulationCount, totalCalls, loading }) {
   const entries = Object.entries(breakdown || {});
-  const total = entries.reduce((s, [, v]) => s + v, 0);
+  const total = dropPopulationCount ?? entries.reduce((s, [, v]) => s + v, 0);
+  const pctOfTotal = totalCalls > 0 ? (total / totalCalls) * 100 : 0;
 
   // Sort: canonical order first (when present), then any extras by count desc.
   const ordered = [];
@@ -191,7 +197,14 @@ function DropReasonsTable({ breakdown, loading }) {
 
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-semibold text-[#1F3864] mb-3">Drop Reasons</h2>
+      <h2 className="text-lg font-semibold text-[#1F3864] mb-1">Drop Reasons</h2>
+      <p className="text-xs text-gray-500 mb-3">
+        {loading
+          ? 'Loading…'
+          : total === 0
+          ? 'No mid-journey drop-offs in the current filter.'
+          : `Among ${fmtNum(total)} mid-journey drop-offs (${pctOfTotal.toFixed(1)}% of ${fmtNum(totalCalls)} calls)`}
+      </p>
       <div className="bg-[#F8F9FA] rounded-lg overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-2">

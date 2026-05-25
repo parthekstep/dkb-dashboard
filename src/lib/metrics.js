@@ -130,6 +130,25 @@ export function computeMetrics(rows) {
     languageBreakdown: bucket('language'),
     phaseBreakdown: bucket('phases_reached'),
     jobStatusBreakdown: bucket('job_status'),
-    dropReasonBreakdown: bucket('drop_reason'),
+    ...dropReasonStats(rows),
+  };
+}
+
+// drop_reason: only counts rows where the column is non-empty (the LLM emits
+// null for not-answered and cleanly-completed calls). Returns both the bucket
+// counts and the size of the drop population so the dashboard can show
+// "N of {totalCalls} dropped mid-journey".
+function dropReasonStats(rows) {
+  const counts = {};
+  let dropPopulationCount = 0;
+  for (const r of rows) {
+    const v = String(r.drop_reason ?? '').trim();
+    if (!v) continue;
+    counts[v] = (counts[v] || 0) + 1;
+    dropPopulationCount += 1;
+  }
+  return {
+    dropReasonBreakdown: counts,
+    dropPopulationCount,
   };
 }
