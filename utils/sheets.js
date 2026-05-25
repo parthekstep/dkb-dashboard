@@ -24,7 +24,7 @@ export async function appendCallRecord(row) {
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.SPREADSHEET_ID,
-    range: 'Master!A:AM',
+    range: 'Master!A:AN',
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] },

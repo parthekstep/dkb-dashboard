@@ -156,7 +156,96 @@ export function Overview({ metrics, loading }) {
           </div>
         </div>
       </section>
+
+      <DropReasonsTable breakdown={metrics.dropReasonBreakdown} loading={loading} />
     </>
+  );
+}
+
+const DROP_REASON_ORDER = [
+  'Not Answered',
+  'Hung Up Immediately',
+  'Wrong Person / Owner Unavailable',
+  'Busy / Call Back Later',
+  'Not Interested / Refused',
+  'Language or Comprehension Issues',
+  'Network / Audio Issues',
+  'Completed',
+];
+
+function DropReasonsTable({ breakdown, loading }) {
+  const entries = Object.entries(breakdown || {});
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+
+  // Sort: canonical order first (when present), then any extras by count desc.
+  const ordered = [];
+  for (const k of DROP_REASON_ORDER) {
+    if (breakdown && Object.prototype.hasOwnProperty.call(breakdown, k)) {
+      ordered.push([k, breakdown[k]]);
+    }
+  }
+  const extras = entries
+    .filter(([k]) => !DROP_REASON_ORDER.includes(k))
+    .sort((a, b) => b[1] - a[1]);
+  const rows = [...ordered, ...extras];
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold text-[#1F3864] mb-3">Drop Reasons</h2>
+      <div className="bg-[#F8F9FA] rounded-lg overflow-hidden">
+        {loading ? (
+          <div className="p-6 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-8 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : rows.length === 0 || total === 0 ? (
+          <div className="p-8 text-center text-sm text-gray-500">No data</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-white border-b border-gray-200">
+              <tr className="text-left text-xs font-medium text-gray-600 uppercase">
+                <th className="px-4 py-3">Reason</th>
+                <th className="px-4 py-3">Count</th>
+                <th className="px-4 py-3">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([name, count]) => {
+                const pct = total > 0 ? (count / total) * 100 : 0;
+                return (
+                  <tr
+                    key={name}
+                    className="border-b border-gray-200 last:border-0 hover:bg-white/60"
+                  >
+                    <td className="px-4 py-3 text-gray-700">{name}</td>
+                    <td className="px-4 py-3 text-gray-700">{fmtNum(count)}</td>
+                    <td className="px-4 py-3 text-gray-700 w-1/2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 bg-gray-200 rounded overflow-hidden">
+                          <div
+                            className="h-full bg-[#1F3864]"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-600 w-12 text-right">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-white border-t border-gray-300 font-semibold">
+                <td className="px-4 py-3 text-gray-700">Total</td>
+                <td className="px-4 py-3 text-gray-700">{fmtNum(total)}</td>
+                <td className="px-4 py-3" />
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
   );
 }
 

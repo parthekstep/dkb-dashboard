@@ -130,5 +130,6 @@ export function computeMetrics(rows) {
     languageBreakdown: bucket('language'),
     phaseBreakdown: bucket('phases_reached'),
     jobStatusBreakdown: bucket('job_status'),
+    dropReasonBreakdown: bucket('drop_reason'),
   };
 }

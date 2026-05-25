@@ -33,6 +33,19 @@ const extractionSchema = {
     talent_insights_shown: { type: 'string', enum: ['Yes', 'No'] },
     call_datetime_ist: { type: 'string' },
     final_summary: { type: 'string' },
+    drop_reason: {
+      type: 'string',
+      enum: [
+        'Not Answered',
+        'Hung Up Immediately',
+        'Wrong Person / Owner Unavailable',
+        'Busy / Call Back Later',
+        'Not Interested / Refused',
+        'Language or Comprehension Issues',
+        'Network / Audio Issues',
+        'Completed',
+      ],
+    },
   },
   required: [
     'call_status', 'phases_reached', 'job_status',
@@ -40,7 +53,7 @@ const extractionSchema = {
     'fields_updated',
     'new_job_mentioned', 'new_job_role', 'new_job_vacancies', 'new_job_salary',
     'new_job_location', 'new_job_qualification', 'new_job_posted',
-    'talent_insights_shown', 'call_datetime_ist', 'final_summary',
+    'talent_insights_shown', 'call_datetime_ist', 'final_summary', 'drop_reason',
   ],
 };
 
@@ -121,6 +134,16 @@ FIELD EXTRACTION RULES:
 18. call_datetime_ist — convert start_time to IST format YYYY-MM-DD HH:MM:SS.
 
 19. final_summary — plain English, max 3 sentences. If not answered: "Call was not answered. No data collected." If answered: mention what was confirmed about the existing job, what fields were filled in, and whether any new job was discussed. Do not use technical field names or phase numbers. Write as if briefing a human ops team member.
+
+20. drop_reason — single best-fit bucket for WHY the call did not complete usefully. Choose ONE:
+- "Not Answered" — line never picked up (use whenever call_status is "Not answered").
+- "Hung Up Immediately" — picked up but ended within ~15 seconds with no useful exchange (silence, "hello hello" then drop).
+- "Wrong Person / Owner Unavailable" — someone other than the owner/decision-maker picked up, or owner was said to be unavailable. Triggers: "owner nahi hai", "galat number", "main employee hu", "boss nahi hai".
+- "Busy / Call Back Later" — owner explicitly asked to be called back. Triggers: "abhi busy hu", "baad me call karna", "meeting me hu".
+- "Not Interested / Refused" — owner picked up but explicitly declined to engage, hostile, or dismissive without giving information.
+- "Language or Comprehension Issues" — owner clearly could not understand the bot, repeated mismatches, owner switched languages the bot could not handle, or gave up due to confusion.
+- "Network / Audio Issues" — call had frequent "*No audio*" / "*User is speaking softly*" markers or dropped mid-conversation due to connectivity.
+- "Completed" — call ran to completion successfully. Use this whenever call_status is "Answered and completed" or there is no meaningful drop.
 
 OUTPUT: Valid JSON only. No explanations. All fields required. Use null for string/number fields not discussed. Do not return empty strings.`;
 }
@@ -208,6 +231,7 @@ export async function extractAndLog(payload) {
     m.talent_insights_shown,           // 37  talent_insights_shown
     m.final_summary,                   // 38  final_summary
     raw_transcript,                    // 39  call_transcript
+    m.drop_reason,                     // 40  drop_reason
   ];
 
   await appendCallRecord(row);
