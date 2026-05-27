@@ -137,14 +137,27 @@ export function computeMetrics(rows) {
 // drop_reason: only counts rows where the column is non-empty (the LLM emits
 // null for not-answered and cleanly-completed calls). Returns both the bucket
 // counts and the size of the drop population so the dashboard can show
-// "N of {totalCalls} dropped mid-journey".
+// "N of {totalCalls} dropped mid-journey". Anything outside the canonical
+// bucket set (legacy values, malformed writes) is folded into "Other".
+const CANONICAL_DROP_BUCKETS = new Set([
+  'Audio or Comprehension Issues',
+  'Hung Up Immediately',
+  'Hung Up Mid-Conversation',
+  'Silent / No Response',
+  'Busy / Call Back Requested',
+  'Bot Stuck / Phase Loop',
+  'Owner Refused / Declined',
+  'Wrong Person / Owner Unavailable',
+]);
+
 function dropReasonStats(rows) {
   const counts = {};
   let dropPopulationCount = 0;
   for (const r of rows) {
-    const v = String(r.drop_reason ?? '').trim();
-    if (!v) continue;
-    counts[v] = (counts[v] || 0) + 1;
+    const raw = String(r.drop_reason ?? '').trim();
+    if (!raw) continue;
+    const key = CANONICAL_DROP_BUCKETS.has(raw) ? raw : 'Other';
+    counts[key] = (counts[key] || 0) + 1;
     dropPopulationCount += 1;
   }
   return {

@@ -176,6 +176,7 @@ const DROP_REASON_ORDER = [
   'Bot Stuck / Phase Loop',
   'Owner Refused / Declined',
   'Wrong Person / Owner Unavailable',
+  'Other',
 ];
 
 function DropReasonsTable({ breakdown, dropPopulationCount, totalCalls, loading }) {
