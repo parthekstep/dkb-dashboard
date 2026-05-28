@@ -81,7 +81,7 @@ export function computeMetrics(rows) {
 
   const callsByDayMap = {};
   for (const r of rows) {
-    const d = extractDateStr(r.call_datetime_ist);
+    const d = extractDateStr(r.campaign_date);
     if (!d) continue;
     callsByDayMap[d] = (callsByDayMap[d] || 0) + 1;
   }

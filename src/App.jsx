@@ -77,7 +77,7 @@ export default function App() {
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
-      const d = extractDateStr(r.call_datetime_ist);
+      const d = extractDateStr(r.campaign_date);
       if (startDate && (!d || d < startDate)) return false;
       if (endDate && (!d || d > endDate)) return false;
       if (campaignType && String(r.campaign_type ?? '').trim() !== campaignType) return false;
