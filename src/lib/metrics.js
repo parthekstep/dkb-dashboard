@@ -17,6 +17,16 @@ export function extractDateStr(s) {
   return cleaned.slice(0, 10);
 }
 
+// City is determined by call language: Hindi -> Ghaziabad, Kannada -> Hubli-Dharwad.
+// The raw city_campaign column is unreliable (column-shift garbage, name variants),
+// so we always derive the standardized city from the language column.
+export function normalizeCity(row) {
+  const lang = String(row.language ?? '').trim().toLowerCase();
+  if (lang === 'hindi') return 'Ghaziabad';
+  if (lang === 'kannada') return 'Hubli-Dharwad';
+  return '';
+}
+
 export function fmtPct(n) {
   return (Number.isFinite(n) ? n.toFixed(1) : '0.0') + '%';
 }
@@ -98,6 +108,12 @@ export function computeMetrics(rows) {
     return map;
   };
 
+  const cityBreakdown = {};
+  for (const r of rows) {
+    const c = normalizeCity(r) || 'Unknown';
+    cityBreakdown[c] = (cityBreakdown[c] || 0) + 1;
+  }
+
   return {
     totalOpeningsBeforeCampaign,
     totalOpeningsActive,
@@ -126,7 +142,7 @@ export function computeMetrics(rows) {
     avgDurationAnswered,
 
     callsByDay,
-    cityBreakdown: bucket('city_campaign'),
+    cityBreakdown,
     languageBreakdown: bucket('language'),
     phaseBreakdown: bucket('phases_reached'),
     jobStatusBreakdown: bucket('job_status'),

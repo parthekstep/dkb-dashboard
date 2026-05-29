@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCsv, MAIN_CSV_URL, ERRORS_CSV_URL } from './lib/csv.js';
-import { computeMetrics, extractDateStr } from './lib/metrics.js';
+import { computeMetrics, extractDateStr, normalizeCity } from './lib/metrics.js';
 import { FilterBar } from './components/FilterBar.jsx';
 import { Overview } from './tabs/Overview.jsx';
 import { Errors, computeErrorBadge } from './tabs/Errors.jsx';
@@ -72,7 +72,14 @@ export default function App() {
     () => uniqueSorted(rows, 'campaign_day').sort((a, b) => dayKey(a) - dayKey(b)),
     [rows]
   );
-  const cities = useMemo(() => uniqueSorted(rows, 'city_campaign'), [rows]);
+  const cities = useMemo(() => {
+    const s = new Set();
+    for (const r of rows) {
+      const c = normalizeCity(r);
+      if (c) s.add(c);
+    }
+    return [...s].sort();
+  }, [rows]);
   const languages = useMemo(() => uniqueSorted(rows, 'language'), [rows]);
 
   const filteredRows = useMemo(() => {
@@ -82,7 +89,7 @@ export default function App() {
       if (endDate && (!d || d > endDate)) return false;
       if (campaignType && String(r.campaign_type ?? '').trim() !== campaignType) return false;
       if (campaignDay && String(r.campaign_day ?? '').trim() !== campaignDay) return false;
-      if (city && String(r.city_campaign ?? '').trim() !== city) return false;
+      if (city && normalizeCity(r) !== city) return false;
       if (language && String(r.language ?? '').trim() !== language) return false;
       return true;
     });

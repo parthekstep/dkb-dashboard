@@ -33,6 +33,7 @@ const extractionSchema = {
     talent_insights_shown: { type: 'string', enum: ['Yes', 'No'] },
     call_datetime_ist: { type: 'string' },
     final_summary: { type: 'string' },
+    call_language: { type: 'string', enum: ['Hindi', 'Kannada', 'English', 'Unknown'] },
     drop_reason: {
       type: ['string', 'null'],
       enum: [
@@ -54,7 +55,7 @@ const extractionSchema = {
     'fields_updated',
     'new_job_mentioned', 'new_job_role', 'new_job_vacancies', 'new_job_salary',
     'new_job_location', 'new_job_qualification', 'new_job_posted',
-    'talent_insights_shown', 'call_datetime_ist', 'final_summary', 'drop_reason',
+    'talent_insights_shown', 'call_datetime_ist', 'final_summary', 'call_language', 'drop_reason',
   ],
 };
 
@@ -136,7 +137,9 @@ FIELD EXTRACTION RULES:
 
 19. final_summary — plain English, max 3 sentences. If not answered: "Call was not answered. No data collected." If answered: mention what was confirmed about the existing job, what fields were filled in, and whether any new job was discussed. Do not use technical field names or phase numbers. Write as if briefing a human ops team member.
 
-20. drop_reason — categorise WHY the call dropped off mid-journey. The journey has three phases: (1) confirm existing job is still open, (2) confirm completeness of job details, (3) capture any new job.
+20. call_language — the primary language the BOT used to speak with the owner. "Hindi" if the bot spoke Hindi/Hinglish (Devanagari script), "Kannada" if the bot spoke Kannada (Kannada script), "English" if predominantly English, "Unknown" if it cannot be determined. This determines the campaign city (Hindi → Ghaziabad, Kannada → Hubli-Dharwad).
+
+21. drop_reason — categorise WHY the call dropped off mid-journey. The journey has three phases: (1) confirm existing job is still open, (2) confirm completeness of job details, (3) capture any new job.
 
 EMIT NULL (do not categorise) WHEN:
 - call_status is "Not answered" — no journey started.
@@ -199,6 +202,11 @@ export async function extractAndLog(payload) {
     ? start_time.split('T')[0]
     : '';
 
+  // City is determined by the call language, not by the (often messy) agent_args.city.
+  const cityByLanguage = m.call_language === 'Hindi' ? 'Ghaziabad'
+    : m.call_language === 'Kannada' ? 'Hubli-Dharwad'
+    : '';
+
   // 39-column row in exact order per spec.
   const row = [
     '',                                //  1  campaign_day         (manual)
@@ -206,8 +214,8 @@ export async function extractAndLog(payload) {
     '',                                //  3  campaign_type        (manual)
     phone,                             //  4  contact_phone
     agent_args.job_id ?? '',           //  5  job_id
-    agent_args.city ?? '',             //  6  city_campaign
-    '',                                //  7  language             (manual)
+    cityByLanguage,                    //  6  city_campaign (derived from language)
+    m.call_language ?? '',             //  7  language (detected by LLM)
     agent_args.company_name ?? '',     //  8  company_name
     agent_args.job_role ?? '',         //  9  job_role_input
     agent_args.num_vacancies ?? '',    // 10  num_vacancies_input
